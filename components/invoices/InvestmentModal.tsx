@@ -17,6 +17,8 @@ import { useFxRate } from "@/hooks/useFxRate";
 import { useUsdcBalance } from "@/hooks/useUsdcBalance";
 import { useWallet } from "@/context/WalletContext";
 import { useAccreditation } from "@/context/AccreditationContext";
+import { ScreeningBanner } from "@/components/compliance/ScreeningBanner";
+import { ScreeningActionGuard } from "@/components/compliance/ScreeningActionGuard";
 import { formatUsdc, formatXLM } from "@/lib/format";
 import {
   BASE_CURRENCY,
@@ -192,6 +194,8 @@ export function InvestmentModal({
               fundingCap={fundingCap ?? maxInvestment}
             />
 
+            <ScreeningBanner />
+
             <div className="flex gap-2 pt-2">
               <Button
                 variant="outline"
@@ -200,20 +204,22 @@ export function InvestmentModal({
               >
                 Cancel
               </Button>
-              <GuardedButton
-                onClick={handleInvest}
-                disabled={
-                  validAmount === null ||
-                  amountError !== null ||
-                  investMutation.isPending ||
-                  insufficientBalance ||
-                  fxBlocked
-                }
-                data-testid="investment-submit"
-                className="flex-1"
-              >
-                {investMutation.isPending ? "Investing..." : "Invest"}
-              </GuardedButton>
+              <ScreeningActionGuard actionLabel="Investing">
+                <GuardedButton
+                  onClick={handleInvest}
+                  disabled={
+                    validAmount === null ||
+                    amountError !== null ||
+                    investMutation.isPending ||
+                    insufficientBalance ||
+                    fxBlocked
+                  }
+                  data-testid="investment-submit"
+                  className="flex-1"
+                >
+                  {investMutation.isPending ? "Investing..." : "Invest"}
+                </GuardedButton>
+              </ScreeningActionGuard>
             </div>
           </div>
         )}

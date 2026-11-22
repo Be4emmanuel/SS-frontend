@@ -97,6 +97,13 @@ export interface Invoice {
   is_settling?: boolean;
   /** On-chain issuer tier for marketplace card display (#604). */
   issuer_tier?: import("@/lib/issuers").IssuerTierName | null;
+  /** Whether the invoice has a posted seller recourse guarantee (#616). */
+  has_recourse?: boolean;
+  /** Optional recourse guarantee summary (#616). */
+  recourse?: {
+    status: "posted" | "triggered" | "released";
+    guarantee_amount: number;
+  } | null;
 }
 
 /** Sector average yield and how many invoices it was computed from (#530). */

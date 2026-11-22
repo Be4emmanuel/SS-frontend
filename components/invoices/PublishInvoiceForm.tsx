@@ -20,6 +20,8 @@ import {
 } from "@/lib/validation/face-value";
 import { validateDeadline } from "@/lib/validation/deadline";
 import { useAuth } from "@/hooks/useAuth";
+import { ScreeningBanner } from "@/components/compliance/ScreeningBanner";
+import { ScreeningActionGuard } from "@/components/compliance/ScreeningActionGuard";
 
 const detailsSchema = z.object({
   title: z.string().min(1, "Invoice title is required"),
@@ -312,13 +314,17 @@ export function PublishInvoiceForm() {
             </div>
             <p className="text-sm font-mono break-all">{documentCid}</p>
 
+            <ScreeningBanner />
+
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setStep(2)}>
                 Back
               </Button>
-              <Button onClick={handlePublish} disabled={isPublishing}>
-                {isPublishing ? "Publishing..." : "Publish"}
-              </Button>
+              <ScreeningActionGuard actionLabel="Publishing">
+                <Button onClick={handlePublish} disabled={isPublishing}>
+                  {isPublishing ? "Publishing..." : "Publish"}
+                </Button>
+              </ScreeningActionGuard>
             </div>
           </div>
         )}

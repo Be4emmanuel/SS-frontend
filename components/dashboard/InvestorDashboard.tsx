@@ -11,6 +11,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Money, ExchangeRateDisclaimer } from "@/components/currency";
 import { AccreditationRenewalBanner } from "@/components/investor/AccreditationRenewalBanner";
+import { ScreeningBanner } from "@/components/compliance/ScreeningBanner";
 
 export function InvestorDashboard() {
   const { data: portfolio, isLoading: portfolioLoading } = usePortfolioSummary();
@@ -29,6 +30,7 @@ export function InvestorDashboard() {
 
   return (
     <div className="space-y-6">
+      <ScreeningBanner />
       <AccreditationRenewalBanner />
       <div>
         <h1 className="text-3xl font-bold">Dashboard</h1>

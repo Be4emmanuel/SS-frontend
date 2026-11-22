@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TxHash } from "@/components/ui/tx-hash";
+import { ScreeningBanner } from "@/components/compliance/ScreeningBanner";
+import { ScreeningActionGuard } from "@/components/compliance/ScreeningActionGuard";
 
 const PAYOUT_BADGE: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
   paid: "secondary",
@@ -86,6 +88,7 @@ export function IssuerEarningsDashboard() {
 
   return (
     <div className="space-y-6">
+      <ScreeningBanner />
       <ExchangeRateDisclaimer />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <SummaryCard label="Gross Proceeds" value={<Money xlm={summary?.gross_proceeds ?? 0} />} />
@@ -135,14 +138,16 @@ export function IssuerEarningsDashboard() {
                       </td>
                       <td className="p-3 text-right">
                         {inv.payout_status === "pending" && (
-                          <Button size="sm" variant="outline"
-                            disabled={withdrawMutation.isPending && withdrawingId === inv.invoice_id}
-                            onClick={() => withdrawMutation.mutate(inv.invoice_id)}
-                            data-testid={`withdraw-btn-${inv.invoice_id}`}>
-                            {withdrawMutation.isPending && withdrawingId === inv.invoice_id
-                              ? <><Loader2 className="mr-1 h-3 w-3 animate-spin" />Withdrawing…</>
-                              : "Withdraw"}
-                          </Button>
+                          <ScreeningActionGuard actionLabel="Withdrawing">
+                            <Button size="sm" variant="outline"
+                              disabled={withdrawMutation.isPending && withdrawingId === inv.invoice_id}
+                              onClick={() => withdrawMutation.mutate(inv.invoice_id)}
+                              data-testid={`withdraw-btn-${inv.invoice_id}`}>
+                              {withdrawMutation.isPending && withdrawingId === inv.invoice_id
+                                ? <><Loader2 className="mr-1 h-3 w-3 animate-spin" />Withdrawing…</>
+                                : "Withdraw"}
+                            </Button>
+                          </ScreeningActionGuard>
                         )}
                       </td>
                     </tr>

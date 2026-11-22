@@ -25,6 +25,7 @@ import { InvoiceGreylistStatus } from "@/components/invoices/InvoiceGreylistStat
 import { IssuerCreditTierBadge } from "@/components/issuers/IssuerCreditTierBadge";
 import { OverdueChip } from "@/components/invoices/OverdueChip";
 import { IssuerTierBadge } from "@/components/issuers/IssuerTierBadge";
+import { RecourseBadge } from "./RecourseBadge";
 
 const statusVariant: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
   open: "default",
@@ -82,6 +83,7 @@ export function InvoiceCard({
           </div>
         </div>
         <InvoiceClassificationBadges invoice={invoice} />
+        <RecourseBadge invoice={invoice} />
         <InvoiceGreylistStatus greylist={invoice.greylist} compact />
         <InvoiceTagPills invoice={invoice} />
       </CardHeader>

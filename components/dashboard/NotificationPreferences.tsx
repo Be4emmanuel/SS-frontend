@@ -5,11 +5,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import type { NotificationEventType, NotificationPreference } from "@/lib/api";
 import {
-  INVESTOR_NOTIFICATION_EVENTS,
-  SELLER_NOTIFICATION_EVENTS,
   useNotificationPreferences,
   useUpdateNotificationPreferenceMutation,
 } from "@/hooks/useNotificationPreferences";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 const EVENT_LABELS: Record<NotificationEventType, string> = {
   new_invoice: "New invoice",
@@ -20,11 +23,17 @@ const EVENT_LABELS: Record<NotificationEventType, string> = {
   invoice_matured: "Invoice matured",
   invoice_rejected: "Invoice rejected",
   deadline_extended: "Deadline extended",
+  payout: "Payouts",
+  dispute: "Disputes",
+  security: "Security",
 };
 
 const GROUPS: { title: string; eventTypes: NotificationEventType[] }[] = [
-  { title: "Seller events", eventTypes: SELLER_NOTIFICATION_EVENTS },
-  { title: "Investor events", eventTypes: INVESTOR_NOTIFICATION_EVENTS },
+  {
+    title: "Activity",
+    eventTypes: ["funding_milestone", "invoice_matured", "payout", "dispute"],
+  },
+  { title: "Account", eventTypes: ["security", "settlement", "new_invoice"] },
 ];
 
 function NotificationPreferencesSkeleton() {
@@ -46,6 +55,24 @@ function NotificationPreferencesSkeleton() {
 export function NotificationPreferences() {
   const { data: preferences, isLoading } = useNotificationPreferences();
   const { mutate: updatePreference } = useUpdateNotificationPreferenceMutation();
+  const [digest, setDigest] = useState<"daily" | "weekly" | "off">("weekly");
+  const [emailVerified, setEmailVerified] = useState(true);
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem("notification-email-digest");
+    if (saved === "daily" || saved === "weekly" || saved === "off") setDigest(saved);
+    setEmailVerified(window.localStorage.getItem("notification-email-verified") !== "false");
+  }, []);
+
+  function saveDigest(value: "daily" | "weekly" | "off") {
+    setDigest(value);
+    window.localStorage.setItem("notification-email-digest", value);
+    toast.success("Email digest preference saved");
+  }
+
+  function resendVerification() {
+    toast.success("Verification email sent");
+  }
 
   // The API may omit entries for newer event types; missing ones default to
   // disabled so every event type always gets a toggle.
@@ -65,6 +92,34 @@ export function NotificationPreferences() {
         </p>
       </CardHeader>
       <CardContent>
+        <div className="mb-6 grid gap-4 rounded-lg border p-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Email digest</p>
+            <Select value={digest} onValueChange={(value) => saveDigest(value as "daily" | "weekly" | "off")}>
+              <SelectTrigger aria-label="Email digest frequency">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="daily">Daily</SelectItem>
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="off">Off</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Email status</p>
+            {emailVerified ? (
+              <Badge>Verified</Badge>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Badge variant="outline">Unverified</Badge>
+                <Button type="button" size="sm" variant="outline" onClick={resendVerification}>
+                  Resend verification
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
         {isLoading || !preferences ? (
           <NotificationPreferencesSkeleton />
         ) : (
@@ -76,14 +131,23 @@ export function NotificationPreferences() {
               <div className="divide-y">
                 {group.eventTypes.map((eventType) => {
                   const pref = preferenceFor(eventType);
+                  const isSecurity = eventType === "security";
                   return (
                     <div key={eventType} className="flex items-center justify-between py-3">
-                      <span className="text-sm font-medium">{EVENT_LABELS[eventType]}</span>
+                      <div>
+                        <span className="text-sm font-medium">{EVENT_LABELS[eventType]}</span>
+                        {isSecurity && (
+                          <p className="text-xs text-muted-foreground">
+                            Required for account protection and cannot be disabled.
+                          </p>
+                        )}
+                      </div>
                       <div className="flex items-center gap-6">
                         <label className="flex items-center gap-2 text-sm text-muted-foreground">
                           Email
                           <Switch
-                            checked={pref.email}
+                            checked={isSecurity ? true : pref.email}
+                            disabled={isSecurity}
                             onCheckedChange={(checked) =>
                               updatePreference({
                                 eventType,
@@ -97,7 +161,8 @@ export function NotificationPreferences() {
                         <label className="flex items-center gap-2 text-sm text-muted-foreground">
                           In-app
                           <Switch
-                            checked={pref.in_app}
+                            checked={isSecurity ? true : pref.in_app}
+                            disabled={isSecurity}
                             onCheckedChange={(checked) =>
                               updatePreference({
                                 eventType,

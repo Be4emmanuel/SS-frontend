@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -15,6 +15,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { TxHash } from "@/components/ui/tx-hash";
 import { ScreeningBanner } from "@/components/compliance/ScreeningBanner";
 import { ScreeningActionGuard } from "@/components/compliance/ScreeningActionGuard";
+import { FeeBreakdown } from "@/components/fees/FeeBreakdown";
+import { SellerTaxProfileSettings } from "@/components/dashboard/SellerTaxProfileSettings";
+import { fetchSellerTaxProfile } from "@/lib/api";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const PAYOUT_BADGE: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
   paid: "secondary",
@@ -41,8 +52,12 @@ function SummaryCard({ label, value }: { label: string; value: React.ReactNode }
 export function IssuerEarningsDashboard() {
   usePageTitle("Earnings");
   const { jwt } = useAuth();
+  const taxProfile = useQuery({ queryKey: ["seller-tax-profile"], queryFn: () => fetchSellerTaxProfile() });
   const queryClient = useQueryClient();
   const [withdrawingId, setWithdrawingId] = useState<string | null>(null);
+  // #654: a confirmation step shows the network fee before a withdrawal is signed.
+  const [withdrawTarget, setWithdrawTarget] = useState<IssuerInvoiceEarning | null>(null);
+  const [feeBlocked, setFeeBlocked] = useState(false);
 
   const { data, isLoading, isError, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useInfiniteQuery({
@@ -111,6 +126,8 @@ export function IssuerEarningsDashboard() {
                     <th className="p-3 font-medium">Gross</th>
                     <th className="p-3 font-medium">Fee</th>
                     <th className="p-3 font-medium">Net</th>
+                    <th className="p-3 font-medium">Withholding estimate</th>
+                    <th className="p-3 font-medium">Estimated payout</th>
                     <th className="p-3 font-medium">Status</th>
                     <th className="p-3 font-medium text-right">Action</th>
                   </tr>
@@ -123,6 +140,8 @@ export function IssuerEarningsDashboard() {
                       <td className="p-3"><Money xlm={inv.gross_proceeds} /></td>
                       <td className="p-3 text-destructive">-<Money xlm={inv.platform_fee} /></td>
                       <td className="p-3 font-semibold"><Money xlm={inv.net_payout} /></td>
+                      <td className="p-3 text-muted-foreground">{taxProfile.data?.withholdingRate == null ? "—" : `-${(inv.net_payout * taxProfile.data.withholdingRate / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })} XLM`}</td>
+                      <td className="p-3 font-semibold">{taxProfile.data?.withholdingRate == null ? "—" : `${(inv.net_payout * (1 - taxProfile.data.withholdingRate / 100)).toLocaleString(undefined, { maximumFractionDigits: 2 })} XLM`}</td>
                       <td className="p-3">
                         <div className="flex items-center gap-2">
                           <Badge variant={PAYOUT_BADGE[inv.payout_status] ?? "outline"}>{inv.payout_status}</Badge>
@@ -140,10 +159,14 @@ export function IssuerEarningsDashboard() {
                         {inv.payout_status === "pending" && (
                           <ScreeningActionGuard actionLabel="Withdrawing">
                             <Button size="sm" variant="outline"
-                              disabled={withdrawMutation.isPending && withdrawingId === inv.invoice_id}
-                              onClick={() => withdrawMutation.mutate(inv.invoice_id)}
+                              disabled={!taxProfile.data?.complete || taxProfile.isLoading || (withdrawMutation.isPending && withdrawingId === inv.invoice_id)}
+                              onClick={() => {
+                                setFeeBlocked(false);
+                                setWithdrawTarget(inv);
+                              }}
                               data-testid={`withdraw-btn-${inv.invoice_id}`}>
-                              {withdrawMutation.isPending && withdrawingId === inv.invoice_id
+                              {!taxProfile.data?.complete ? "Complete tax profile"
+                                : withdrawMutation.isPending && withdrawingId === inv.invoice_id
                                 ? <><Loader2 className="mr-1 h-3 w-3 animate-spin" />Withdrawing…</>
                                 : "Withdraw"}
                             </Button>
@@ -165,6 +188,50 @@ export function IssuerEarningsDashboard() {
           )}
         </CardContent>
       </Card>
+
+      <SellerTaxProfileSettings previewAmount={summary?.net_payout ?? 0} />
+
+      <Dialog
+        open={withdrawTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setWithdrawTarget(null);
+            setFeeBlocked(false);
+          }
+        }}
+      >
+        <DialogContent data-testid="withdraw-confirm-dialog">
+          <DialogHeader>
+            <DialogTitle>Confirm withdrawal</DialogTitle>
+            <DialogDescription>
+              Review the network fee before signing the withdrawal for {withdrawTarget?.invoice_title}.
+            </DialogDescription>
+          </DialogHeader>
+          {withdrawTarget !== null && (
+            <FeeBreakdown
+              amount={withdrawTarget.net_payout}
+              onInsufficientBalance={setFeeBlocked}
+            />
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setWithdrawTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              disabled={feeBlocked || withdrawMutation.isPending}
+              data-testid="withdraw-confirm"
+              onClick={() => {
+                if (!withdrawTarget) return;
+                const id = withdrawTarget.invoice_id;
+                setWithdrawTarget(null);
+                withdrawMutation.mutate(id);
+              }}
+            >
+              {withdrawMutation.isPending ? "Withdrawing…" : "Confirm withdrawal"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

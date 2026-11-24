@@ -16,6 +16,7 @@ const TABS = [
 
 const SECONDARY_LINKS = [
   { href: "/marketplace/resale", label: "Secondary market" },
+  { href: "/portfolio/cash-flow", label: "Cash flow calendar" },
   { href: "/watchlist", label: "Watchlist" },
   { href: "/transactions", label: "Transactions" },
   { href: "/investor/keys", label: "Keys" },
@@ -71,6 +72,7 @@ export function MobileNav() {
 
       {/* Bottom tab bar */}
       <nav
+        aria-label="Mobile navigation"
         className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         data-testid="mobile-tab-bar"

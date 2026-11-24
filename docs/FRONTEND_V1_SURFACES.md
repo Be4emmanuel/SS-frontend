@@ -1,6 +1,6 @@
 # Frontend V1 finance surface contract
 
-Issues #594, #595, #596 and #597 add four investor and admin surfaces to
+Issues #594, #595, #596, #597 and #662 add investor and admin surfaces to
 `SS-frontend`. This repository is frontend-only, so the API routes below are a
 contract the backend must provide. The UI never invents data: if a route is
 missing or rejects, the affected panel renders an explicit unavailable state.
@@ -121,6 +121,39 @@ interface RateAuctionData {
   `POST /invoices/:id/rate-auction/commit`.
 - Closed filled and closed unfilled outcomes disable the form. Unfilled
   auctions show refund guidance.
+
+## #662 Investor savings goals
+
+Goals and their confirmed allocations are investor-authored data with no
+backend route yet, so `useSavingsGoals` persists them in `localStorage` under
+`ss_savings_goals` and `ss_savings_goal_allocations`, the same approach already
+used for saved views. Every progress, pace, status and recommendation rule
+lives in `lib/savingsGoals` and is unit tested.
+
+```ts
+interface SavingsGoal {
+  id: string;
+  name: string;
+  targetAmount: number;
+  targetDate: string;
+  riskTier: "A" | "B" | "C" | "D";
+  currency: string;
+  state: "active" | "paused";
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+- Progress counts confirmed allocations only. Pending commitments are reported
+  separately and never move the bar.
+- Pace divides the confirmed total by the days since creation and projects a
+  completion date, so the projection moves after each logged investment.
+- A goal is missed once its target date has fully passed, short of the target,
+  and is not paused. Completed and missed goals surface a one-line notification.
+- Recommendations match invoices that are open, carry the goal's risk tier and
+  have capacity left; an unrated invoice never matches a risk-tiered goal.
+- Only active goals recommend invoices. Paused, completed and missed goals do
+  not. Goals can be paused, resumed, edited and deleted.
 
 ## Failure behavior
 

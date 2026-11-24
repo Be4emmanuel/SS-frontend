@@ -6,3 +6,5 @@ export { KycTierLimits } from "./KycTierLimits";
 export { KycUpgradePrompt } from "./KycUpgradePrompt";
 export { KycTierPanel } from "./KycTierPanel";
 export { KycTierUpgrade } from "./KycTierUpgrade";
+export { SavingsGoalCard } from "./SavingsGoalCard";
+export { SavingsGoalsDashboard } from "./SavingsGoalsDashboard";

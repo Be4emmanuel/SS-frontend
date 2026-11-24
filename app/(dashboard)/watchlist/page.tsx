@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { Bell, Loader2, RefreshCw, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -11,6 +12,9 @@ import {
   InvoiceCard,
 } from "@/components/marketplace";
 import { useWatchlist } from "@/hooks/useWatchlist";
+import { useNoteIndex } from "@/hooks/useNoteIndex";
+import { TagFilter } from "@/components/marketplace/TagFilter";
+import { filterByTags } from "@/lib/invoiceNotes";
 import { useStellarWallet } from "@/hooks/useStellarWallet";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
@@ -27,6 +31,13 @@ export default function WatchlistPage() {
   const { isConnected } = useStellarWallet();
   const { invoices, count, isLoading, isError, refetch, isPending } =
     useWatchlist();
+  const [tagFilter, setTagFilter] = useState<string[]>([]);
+  const { index: noteIndex } = useNoteIndex();
+  const shown = filterByTags(
+    invoices.map((entry) => ({ ...entry, id: entry.invoice.id })),
+    noteIndex,
+    tagFilter,
+  );
 
   return (
     <main className="container mx-auto px-4 py-8">
@@ -101,11 +112,19 @@ export default function WatchlistPage() {
         <EmptyWatchlist />
       ) : (
         <ComparisonProvider>
+          <div className="mb-4">
+            <TagFilter selected={tagFilter} onChange={setTagFilter} />
+          </div>
+          {shown.length === 0 && (
+            <p className="py-8 text-center text-sm text-muted-foreground" data-testid="watchlist-no-tag-match">
+              No watched invoices have the selected tags.
+            </p>
+          )}
           <div
             className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
             data-testid="watchlist-grid"
           >
-            {invoices.map(({ invoice, stateChange }) => (
+            {shown.map(({ invoice, stateChange }) => (
               <InvoiceCard
                 key={invoice.id}
                 invoice={invoice}

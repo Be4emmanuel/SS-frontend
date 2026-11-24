@@ -29,14 +29,26 @@ import { InvoiceMaturitySection } from "@/components/invoices/InvoiceMaturitySec
 import { InvoiceMetaTags } from "@/components/invoices/InvoiceMetaTags";
 import { InvestorSocialProof } from "@/components/invoices/InvestorSocialProof";
 import { InvoiceStatusBadge } from "@/components/invoices/InvoiceStatusBadge";
+import { AttestationList } from "@/components/attestations/AttestationList";
+import { DebtorStatusBadge } from "@/components/debtor/DebtorStatusBadge";
+import { WatchWarning } from "@/components/debtor/WatchWarning";
 import { ReturnsCalculator } from "@/components/invoices/ReturnsCalculator";
+import { ReturnSimulator } from "@/components/invoices/ReturnSimulator";
 import { InvestmentModal } from "@/components/invoices/InvestmentModal";
+import { OverdueBanner } from "@/components/invoices/OverdueBanner";
+import { ExposureMeter } from "@/components/invoices/ExposureMeter";
 import { InvoiceRatingWidget } from "@/components/invoices/InvoiceRatingWidget";
+import { InvoiceDiscussionThread } from "@/components/invoices/InvoiceDiscussionThread";
+import { InvoiceNotes } from "@/components/invoices/InvoiceNotes";
 import { ReturnsBreakdown } from "@/components/invoices/ReturnsBreakdown";
 import { SettlementTimeline } from "@/components/invoices/SettlementTimeline";
+import { RepaymentTimeline } from "@/components/invoices/RepaymentTimeline";
+import { InstallmentSchedule } from "@/components/invoices/InstallmentSchedule";
+import { investorProportion } from "@/lib/installments";
 import { ShareInvoiceButton } from "@/components/invoices/ShareInvoiceButton";
 import { WatchlistButton } from "@/components/invoices/WatchlistButton";
 import { useIsKycApproved } from "@/hooks/useKycStatus";
+import { useLateInterest } from "@/hooks/useLateInterest";
 import { useInvoiceStatusPolling } from "@/hooks/useInvoiceStatusPolling";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useProtocolStatus } from "@/hooks/useProtocolStatus";
@@ -48,6 +60,7 @@ import { InvoiceClassificationBadges } from "@/components/marketplace/InvoiceCla
 import { InvoiceTagPills } from "@/components/marketplace/InvoiceTagPills";
 import { SettlementCountdown } from "@/components/marketplace/SettlementCountdown";
 import { AnnouncementFeed } from "@/components/invoices/AnnouncementFeed";
+import { FundingDepth } from "@/components/marketplace/FundingDepth";
 import { SyndicatePanel } from "@/components/invoices/SyndicatePanel";
 import { InvoiceFraudReport, InvoiceUnderReviewBanner } from "@/components/invoices/InvoiceFraudReport";
 import { InvoiceRiskAlert } from "@/components/invoices/InvoiceRiskAlert";
@@ -60,7 +73,11 @@ import { CurrencyToggle } from "@/components/layout/CurrencyToggle";
 import { InvoiceGreylistStatus } from "@/components/invoices/InvoiceGreylistStatus";
 import { ImpactReport } from "@/components/invoices/ImpactReport";
 import { DynamicYieldCard } from "@/components/invoices/DynamicYieldCard";
+import { UnderwritePanel } from "@/components/underwriting/UnderwritePanel";
+import { WithdrawCommitmentModal } from "@/components/invoices/WithdrawCommitmentModal";
 import { RateAuctionPanel } from "@/components/invoices/RateAuctionPanel";
+import { DebtorAckPanel, useDebtorAckBlocked } from "@/components/invoices/DebtorAckPanel";
+import { VelocityMeter } from "@/components/investor/VelocityMeter";
 import { AssignmentBanner } from "@/components/invoices/AssignmentBanner";
 import { RestructureProposalCard } from "@/components/invoices/RestructureProposalCard";
 import { SettleNowButton } from "@/components/invoices/SettleNowButton";
@@ -136,6 +153,10 @@ function InvestCallToAction({
   maturityDate,
   fractionPrice,
   trancheStatus,
+  guaranteePercentage,
+  coverPercentage,
+  collateralAmount,
+  debtorId,
 }: {
   invoiceId: string;
   minInvestment: number;
@@ -145,12 +166,17 @@ function InvestCallToAction({
   maturityDate: string;
   fractionPrice?: number;
   trancheStatus?: NonNullable<import("@/lib/api").Invoice["tranche_status"]>;
+  guaranteePercentage?: number | null;
+  coverPercentage?: number | null;
+  collateralAmount?: number | null;
+  debtorId?: string | null;
 }) {
   const [selectedTranche, setSelectedTranche] = useState<1 | 2>(1);
   const { isConnected } = useWallet();
   const { isApproved, isLoading, status } = useIsKycApproved({
     enabled: isConnected,
   });
+  const ackBlocked = useDebtorAckBlocked(invoiceId);
 
   let body: ReactNode;
 
@@ -183,18 +209,32 @@ function InvestCallToAction({
   } else {
     body = (
       <>
-        <InvestmentModal
-          invoiceId={invoiceId}
-          minInvestment={minInvestment}
-          maxInvestment={maxInvestment}
-          fundingCap={fundingCap}
-          trancheType={trancheStatus ? selectedTranche : undefined}
-        />
+        <VelocityMeter />
+        {ackBlocked ? null : (
+          <InvestmentModal
+            invoiceId={invoiceId}
+            minInvestment={minInvestment}
+            maxInvestment={maxInvestment}
+            fundingCap={fundingCap}
+            invoiceFaceValue={fundingCap}
+            trancheType={trancheStatus ? selectedTranche : undefined}
+            debtorId={debtorId}
+          />
+        )}
         <ReturnsCalculator
           faceValue={fundingCap}
           yieldPercentage={yieldPercentage}
           maturityDate={maturityDate}
           fractionPrice={fractionPrice}
+        />
+        <ReturnSimulator
+          faceValue={fundingCap}
+          yieldPercentage={yieldPercentage}
+          maturityDate={maturityDate}
+          fractionPrice={fractionPrice}
+          guaranteePercentage={guaranteePercentage}
+          coverPercentage={coverPercentage}
+          collateralAmount={collateralAmount}
         />
       </>
     );
@@ -313,6 +353,7 @@ export function InvoiceDetailView({ invoiceId }: InvoiceDetailViewProps) {
               <div className="flex shrink-0 flex-wrap items-center gap-2">
                 <CurrencyToggle showRate={false} />
                 <InvoiceStatusBadge status={invoice.status} />
+                <DebtorStatusBadge debtorHash={invoice.debtor_hash ?? invoice.debtor_id} />
                 <DaysRemainingBadge dueDate={invoice.due_date} status={invoice.status} />
                 <WatchlistButton invoiceId={invoice.id} />
                 <ShareInvoiceButton invoiceId={invoice.id} title={invoice.title} />
@@ -339,6 +380,7 @@ export function InvoiceDetailView({ invoiceId }: InvoiceDetailViewProps) {
         isDisputed={invoice.is_disputed}
         isSettling={invoice.is_settling}
       />
+      <WatchWarning debtorHash={invoice.debtor_hash ?? invoice.debtor_id} />
 
       <InvoiceFinancials
         faceValue={invoice.amount}
@@ -363,6 +405,18 @@ export function InvoiceDetailView({ invoiceId }: InvoiceDetailViewProps) {
           isSettled={invoice.status === "settled"}
           lateInterest={lateInterest.accrued}
         />
+      )}
+      {/* Debtor payment plan (#776): schedule, statuses, shortfalls, investor share. */}
+      {(invoice.status === "funded" || invoice.status === "settled") && (
+        <InstallmentSchedule
+          invoiceId={invoice.id}
+          investorProportion={investorProportion(investorClaim, invoice.raised || invoice.amount)}
+          lateInterestAccrued={lateInterest.accrued}
+        />
+      )}
+      {/* Repayment history timeline (#635): payment events with matching status. */}
+      {(invoice.status === "funded" || invoice.status === "settled") && (
+        <RepaymentTimeline invoiceId={invoice.id} />
       )}
 
       <InvoiceBenchmarkCard invoiceId={invoice.id} />
@@ -469,12 +523,16 @@ export function InvoiceDetailView({ invoiceId }: InvoiceDetailViewProps) {
       )}
 
       <OrderBookDepthChart invoiceId={invoice.id} />
+      {invoice.status === "open" && <FundingDepth invoiceId={invoice.id} />}
 
       <DynamicYieldCard wallet={invoice.seller} invoiceRate={invoice.yield_percentage} />
 
       {/* Descending-rate auction, rendered only when the backend reports one (#594). */}
       <RateAuctionPanel invoiceId={invoice.id} />
 
+      {/* Debtor acknowledgement status (#620). */}
+      <DebtorAckPanel invoiceId={invoice.id} />
+      <ExposureMeter debtorId={invoice.debtor_id ?? invoice.debtor_hash} />
       {/* Invest CTA — KYC gated. */}
       {isOpenForInvestment ? (
         <InvestCallToAction
@@ -486,6 +544,10 @@ export function InvoiceDetailView({ invoiceId }: InvoiceDetailViewProps) {
           maturityDate={invoice.maturity_date ?? invoice.due_date}
           fractionPrice={invoice.fraction_price}
           trancheStatus={invoice.tranche_status ?? undefined}
+          guaranteePercentage={invoice.guarantee_percentage}
+          coverPercentage={invoice.cover_percentage}
+          collateralAmount={invoice.collateral_amount}
+          debtorId={invoice.debtor_id ?? invoice.debtor_hash}
         />
       ) : (
         <Card data-testid="invest-cta">
@@ -508,14 +570,44 @@ export function InvoiceDetailView({ invoiceId }: InvoiceDetailViewProps) {
         </Card>
       )}
 
+      {/* Early exit (#593): investors in an invoice that is still raising can
+          pull their commitment, with the fee previewed before confirming. */}
+      {invoice.status === "open" && isQualifyingInvestor && (
+        <Card data-testid="withdraw-commitment-card">
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 pt-6">
+            <p className="text-sm text-muted-foreground">
+              Changed your mind? You can withdraw your commitment while the invoice is still raising.
+            </p>
+            <WithdrawCommitmentModal invoiceId={invoice.id} invoiceTitle={invoice.title} />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Underwriter cover (#587). Hidden for invoices with no cover pool. */}
+      {invoice.status !== "draft" && invoice.status !== "pending" && invoice.status !== "rejected" && (
+        <UnderwritePanel invoiceId={invoice.id} invoiceStatus={invoice.status} />
+      )}
+
       <SyndicatePanel invoiceId={invoice.id} />
 
       <AnnouncementFeed invoiceId={invoice.id} />
 
-      <InvoiceDocumentsTab
+      <AttestationList invoiceId={invoice.id} />
+
+      {(invoice.document_url || invoice.documents?.length) ? <InvoiceDocumentsTab
         invoiceId={invoice.id}
         documentUrl={invoice.document_url ?? null}
         additionalDocuments={invoice.documents ?? []}
+        invoiceNumber={invoice.invoice_number}
+      /> : null}
+
+      {/* Private to the investor (#777); never part of shared links. */}
+      {address && <InvoiceNotes invoiceId={invoice.id} />}
+
+      <InvoiceDiscussionThread
+        invoiceId={invoice.id}
+        issuerAddress={invoice.seller}
+        currentUserAddress={address}
       />
 
       <InvoiceRatingWidget

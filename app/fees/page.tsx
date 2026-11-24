@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { fetchFeeSchedule, type FeeScheduleResponse, type FeeType, INDUSTRY_BENCHMARKS, type IndustryBenchmark, fetchPublicFeeHistory, type FeeChangeLogEntry } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -624,11 +625,17 @@ export default function FeesPage() {
 
   return (
     <main className="container mx-auto px-4 py-8 space-y-6">
-      <header className="space-y-2">
+      <header className="space-y-3">
         <h1 className="text-3xl font-bold">Fee Schedule</h1>
         <p className="text-muted-foreground">
           Transparent breakdown of all platform fees with worked examples and industry comparisons.
         </p>
+        <Button asChild variant="outline" size="sm">
+          <Link href="/fees/calculator">
+            <Calculator className="size-4" />
+            Compare fee scenarios
+          </Link>
+        </Button>
       </header>
 
       <Tabs

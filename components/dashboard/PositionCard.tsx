@@ -13,6 +13,7 @@ import { Money } from "@/components/currency";
 import { OverdueChip } from "@/components/invoices/OverdueChip";
 import { InvestorLateInterest } from "@/components/invoices/InvestorLateInterest";
 import { calculatePotentialRecovery, useRecourse } from "@/hooks/useRecourse";
+import { AccrualMeter } from "@/components/investor/AccrualMeter";
 
 function formatCommittedXlm(amount: number): string {
   return amount.toLocaleString(undefined, {
@@ -100,6 +101,11 @@ export function PositionCard({ position }: PositionCardProps) {
               </span>
             )}
           </div>
+          {position.status === "active" && (
+            <div className="mt-3">
+              <AccrualMeter invoiceId={position.invoice_id} />
+            </div>
+          )}
           {isDefaulted && (
             <Link
               href={`/marketplace/${position.invoice_id}`}

@@ -5,8 +5,14 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { fetchInvoices, resolveInvoiceCategory, type Invoice, type InvoiceCategory } from "@/lib/api";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { useNoteIndex } from "@/hooks/useNoteIndex";
+import { TagFilter } from "@/components/marketplace/TagFilter";
+import { NoteIndicator } from "@/components/marketplace/NoteIndicator";
+import { filterByTags } from "@/lib/invoiceNotes";
 import { TimelockPendingBanner } from "@/components/governance";
+import { PromoBanner } from "@/components/promotions/PromoBanner";
 import { FundingProgressBar } from "@/components/invoices";
+import { RecommendedInvoices } from "@/components/marketplace/RecommendedInvoices";
 import {
   ActiveTaxonomyChips,
   CompareToggleButton,
@@ -57,6 +63,8 @@ import { WatchlistButton } from "@/components/marketplace/WatchlistButton";
 import { MarketplaceViewTabs } from "@/components/pools/PoolList";
 import { Money, ExchangeRateDisclaimer } from "@/components/currency";
 import { CurrencyToggle } from "@/components/layout/CurrencyToggle";
+import { DebtorStatusBadge } from "@/components/debtor/DebtorStatusBadge";
+import { hasVerifiedAttestation } from "@/lib/attestations";
 import { ArrowDown, ArrowUp, Loader2 } from "lucide-react";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
@@ -112,6 +120,8 @@ function InvoiceRow({ invoice }: { invoice: Invoice }) {
               {invoice.status}
             </Badge>
             <OverdueChip status={invoice.status} dueDate={invoice.due_date} />
+            <DebtorStatusBadge debtorHash={invoice.debtor_hash ?? invoice.debtor_id} />
+            <NoteIndicator invoiceId={invoice.id} />
             <WatchlistButton invoiceId={invoice.id} />
           </div>
         </div>
@@ -213,6 +223,7 @@ function MarketplacePageContent() {
     toDate: initialToDate,
     minAmount: Number(searchParams.get("minAmount")) || 0,
     maxAmount: Number(searchParams.get("maxAmount")) || 0,
+    verifiedAttestation: searchParams.get("verifiedAttestation") === "true",
   });
 
   const [status, setStatus] = useState<"open" | "funded" | "settled" | "all">(initialStatus);
@@ -289,6 +300,9 @@ function MarketplacePageContent() {
       }
       if (newFilters.maxAmount > 0) {
         params.set("maxAmount", newFilters.maxAmount.toString());
+      }
+      if (newFilters.verifiedAttestation) {
+        params.set("verifiedAttestation", "true");
       }
       if (newStatus !== "all") {
         params.set("status", newStatus);
@@ -576,6 +590,7 @@ function MarketplacePageContent() {
       toDate: "",
       minAmount: 0,
       maxAmount: 0,
+      verifiedAttestation: false,
     };
     setPanelFilters(emptyFilters);
     setStatus("all");
@@ -642,6 +657,12 @@ function MarketplacePageContent() {
         matchesMaxAmount = inv.amount <= panelFilters.maxAmount;
       }
 
+      // Verified-attestation narrowing uses optional embedded counts (#605).
+      // Without the field an invoice is excluded rather than assumed verified.
+      const matchesAttestation = panelFilters.verifiedAttestation
+        ? hasVerifiedAttestation(inv)
+        : true;
+
       return (
         matchesBarStatus &&
         matchesCategory &&
@@ -650,7 +671,8 @@ function MarketplacePageContent() {
         matchesFromDate &&
         matchesToDate &&
         matchesMinAmount &&
-        matchesMaxAmount
+        matchesMaxAmount &&
+        matchesAttestation
       );
     });
 
@@ -698,9 +720,12 @@ function MarketplacePageContent() {
    * only narrowing — but it is still what makes a checkbox respond
    * immediately, and what keeps the client honest while a page is mid-fetch.
    */
+  // Private tag filter (#777): the user's own tags, applied client-side.
+  const [tagFilter, setTagFilter] = useState<string[]>([]);
+  const { index: noteIndex } = useNoteIndex();
   const visibleInvoices = useMemo(
-    () => filterByTaxonomy(filtered, taxonomyFilters),
-    [filtered, taxonomyFilters]
+    () => filterByTags(filterByTaxonomy(filtered, taxonomyFilters), noteIndex, tagFilter),
+    [filtered, taxonomyFilters, noteIndex, tagFilter]
   );
 
   /**
@@ -719,6 +744,7 @@ function MarketplacePageContent() {
     Boolean(panelFilters.toDate) ||
     panelFilters.minAmount > 0 ||
     panelFilters.maxAmount > 0 ||
+    panelFilters.verifiedAttestation ||
     status !== "all" ||
     debouncedSearch !== "";
 
@@ -744,6 +770,7 @@ function MarketplacePageContent() {
     <ComparisonProvider>
       <main className="container mx-auto px-4 py-8 pb-24 space-y-8">
         <TimelockPendingBanner />
+        <PromoBanner />
         <div className="space-y-3">
           <h1 className="text-2xl font-bold">Invoice Marketplace</h1>
           <MarketplaceViewTabs active="invoices" />
@@ -762,6 +789,7 @@ function MarketplacePageContent() {
 
         {/* Featured: highest-yield live invoices, the discovery hook above the fold. */}
         <FeaturedInvoicesCarousel invoices={allInvoices} />
+        <RecommendedInvoices />
 
         <div className="flex flex-col md:flex-row gap-6">
           <div className="w-full md:w-64 shrink-0 space-y-4">
@@ -885,6 +913,7 @@ function MarketplacePageContent() {
             </div>
 
             <div className="space-y-4">
+              <TagFilter selected={tagFilter} onChange={setTagFilter} />
               {visibleInvoices.length === 0 ? (
                 <div
                   className="space-y-4 py-12 text-center text-muted-foreground"

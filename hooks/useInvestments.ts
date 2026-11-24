@@ -10,6 +10,7 @@ import { investErrorMessage, type InvestCurrency } from "@/lib/investCurrency";
 import { INVOICES_QUERY_KEY } from "./useInvoices";
 import { PORTFOLIO_QUERY_KEY } from "./usePortfolio";
 import { ONBOARDING_BONUS_QUERY_KEY } from "./useOnboardingBonus";
+import { queryKeys } from "@/lib/queryKeys";
 
 interface InvestMutationVars {
   invoiceId: string;
@@ -33,10 +34,11 @@ export function useInvestMutation() {
   const mutateRef = useRef<(vars: InvestMutationVars) => void>(() => {});
 
   const mutation = useMutation({
-    mutationFn: ({ invoiceId, amount, currency, trancheType }: InvestMutationVars) =>
-      currency
-        ? investInInvoice(invoiceId, amount, currency, trancheType)
-        : investInInvoice(invoiceId, amount, undefined, trancheType),
+    mutationFn: ({ invoiceId, amount, currency, trancheType }: InvestMutationVars) => {
+      if (currency) return investInInvoice(invoiceId, amount, currency, trancheType);
+      if (trancheType) return investInInvoice(invoiceId, amount, undefined, trancheType);
+      return investInInvoice(invoiceId, amount);
+    },
 
     onMutate: async ({ invoiceId, amount }) => {
       // Transaction status toast, shown synchronously and immediately on
@@ -116,6 +118,7 @@ export function useInvestMutation() {
       queryClient.invalidateQueries({ queryKey: INVOICES_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: ONBOARDING_BONUS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: queryKeys.debtorHeadroom("") });
     },
   });
 

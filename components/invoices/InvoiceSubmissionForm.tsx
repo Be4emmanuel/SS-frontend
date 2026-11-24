@@ -13,6 +13,8 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { DocumentUpload } from "@/components/invoices/DocumentUpload";
+import { ExtractionReview } from "@/components/invoices/ExtractionReview";
+import { useInvoiceExtraction, type ExtractedFieldName } from "@/hooks/useInvoiceExtraction";
 import { uploadDocumentToIpfs, publishInvoice } from "@/lib/api";
 import { validateDeadline } from "@/lib/validation/deadline";
 import { useAuth } from "@/hooks/useAuth";
@@ -105,6 +107,9 @@ export function InvoiceSubmissionForm() {
   const [isUploading, setIsUploading] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showExtraction, setShowExtraction] = useState(true);
+  const extraction = useInvoiceExtraction();
+  const { extract } = extraction;
 
   // ── Step 1: Invoice details ───────────────────────────────────────────────
   const detailsForm = useForm<InvoiceDetailsData>({
@@ -155,6 +160,8 @@ export function InvoiceSubmissionForm() {
       setDocumentCid(null);
       setIsUploading(true);
       setUploadProgress(0);
+      setShowExtraction(true);
+      void extract(file);
 
       const interval = setInterval(() => {
         setUploadProgress((prev) => {
@@ -182,7 +189,18 @@ export function InvoiceSubmissionForm() {
           setIsUploading(false);
         });
     },
-    [jwt]
+    [jwt, extract]
+  );
+
+  const applyExtraction = useCallback(
+    (fields: Partial<Record<ExtractedFieldName, string>>) => {
+      if (fields.invoiceNumber) detailsForm.setValue("invoiceNumber", fields.invoiceNumber);
+      if (fields.debtorName) detailsForm.setValue("debtorName", fields.debtorName);
+      if (fields.dueDate) detailsForm.setValue("dueDate", fields.dueDate);
+      if (fields.amount) financialForm.setValue("faceValue", fields.amount);
+      toast.success("Review the suggested fields before continuing");
+    },
+    [detailsForm, financialForm],
   );
 
   // ── Submit ────────────────────────────────────────────────────────────────
@@ -376,6 +394,16 @@ export function InvoiceSubmissionForm() {
             </p>
 
             <DocumentUpload onUpload={handleDocumentUpload} />
+
+            {showExtraction && (
+              <ExtractionReview
+                result={extraction.result}
+                isExtracting={extraction.isExtracting}
+                error={extraction.error}
+                onApply={applyExtraction}
+                onDismiss={() => setShowExtraction(false)}
+              />
+            )}
 
             {(isUploading || uploadProgress > 0) && (
               <div className="space-y-1">

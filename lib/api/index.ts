@@ -174,6 +174,9 @@ export interface InvoiceDetail extends Invoice {
   terms?: string;
   investors: { address: string; amount: number; timestamp: string }[];
   document_url: string;
+  guarantee_percentage?: number | null;
+  cover_percentage?: number | null;
+  collateral_amount?: number | null;
   /** Any supporting documents beyond the primary one. */
   documents?: Array<string | { cid: string; type?: string; file_name?: string; size?: number }>;
   early_repayment?: {
@@ -885,7 +888,10 @@ export type NotificationEventType =
   | "invoice_settled"
   | "invoice_rejected"
   | "deadline_extended"
-  | "invoice_matured";
+  | "invoice_matured"
+  | "payout"
+  | "dispute"
+  | "security";
 export type NotificationChannel = "email" | "in_app";
 
 export async function updateNotificationPreference(
@@ -4423,6 +4429,48 @@ export async function uploadDocumentToIpfs(
   });
   if (!res.ok) throw new Error("Document upload failed");
   return res.json();
+}
+
+export interface InvoiceExtractionStarted {
+  jobId: string;
+}
+
+export interface InvoiceExtractionStatus {
+  status: "processing" | "completed" | "failed";
+  fields?: Record<string, { value: string | number | null; confidence: number }>;
+  error?: string;
+}
+
+export async function extractInvoiceDocument(
+  file: File,
+  token?: string,
+): Promise<InvoiceExtractionStarted> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch(`${API_BASE}/invoices/extract`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: formData,
+  });
+  if (!res.ok) throw new Error("Unsupported or unreadable file");
+  const payload = await res.json();
+  return { jobId: String(payload.jobId ?? payload.job_id ?? "") };
+}
+
+export async function fetchInvoiceExtraction(
+  jobId: string,
+  token?: string,
+): Promise<InvoiceExtractionStatus> {
+  const res = await fetch(`${API_BASE}/invoices/extract/${encodeURIComponent(jobId)}`, {
+    headers: authHeaders(token),
+  });
+  if (!res.ok) throw new Error("Could not retrieve extraction result");
+  const payload = await res.json();
+  return {
+    status: payload.status === "completed" ? "completed" : payload.status === "failed" ? "failed" : "processing",
+    fields: payload.fields,
+    error: payload.error,
+  };
 }
 
 export async function withdrawIssuerEarnings(

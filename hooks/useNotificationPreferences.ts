@@ -25,6 +25,7 @@ export const SELLER_NOTIFICATION_EVENTS: NotificationEventType[] = [
   "invoice_settled",
   "invoice_rejected",
   "deadline_extended",
+  "dispute",
 ];
 
 export const INVESTOR_NOTIFICATION_EVENTS: NotificationEventType[] = [
@@ -32,6 +33,8 @@ export const INVESTOR_NOTIFICATION_EVENTS: NotificationEventType[] = [
   "funding_milestone",
   "settlement",
   "invoice_matured",
+  "payout",
+  "security",
 ];
 
 export function useNotificationPreferences() {

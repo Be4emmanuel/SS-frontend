@@ -33,6 +33,7 @@ import { AttestationList } from "@/components/attestations/AttestationList";
 import { DebtorStatusBadge } from "@/components/debtor/DebtorStatusBadge";
 import { WatchWarning } from "@/components/debtor/WatchWarning";
 import { ReturnsCalculator } from "@/components/invoices/ReturnsCalculator";
+import { ReturnSimulator } from "@/components/invoices/ReturnSimulator";
 import { InvestmentModal } from "@/components/invoices/InvestmentModal";
 import { OverdueBanner } from "@/components/invoices/OverdueBanner";
 import { ExposureMeter } from "@/components/invoices/ExposureMeter";
@@ -150,6 +151,9 @@ function InvestCallToAction({
   maturityDate,
   fractionPrice,
   trancheStatus,
+  guaranteePercentage,
+  coverPercentage,
+  collateralAmount,
   debtorId,
 }: {
   invoiceId: string;
@@ -160,6 +164,9 @@ function InvestCallToAction({
   maturityDate: string;
   fractionPrice?: number;
   trancheStatus?: NonNullable<import("@/lib/api").Invoice["tranche_status"]>;
+  guaranteePercentage?: number | null;
+  coverPercentage?: number | null;
+  collateralAmount?: number | null;
   debtorId?: string | null;
 }) {
   const [selectedTranche, setSelectedTranche] = useState<1 | 2>(1);
@@ -217,6 +224,15 @@ function InvestCallToAction({
           yieldPercentage={yieldPercentage}
           maturityDate={maturityDate}
           fractionPrice={fractionPrice}
+        />
+        <ReturnSimulator
+          faceValue={fundingCap}
+          yieldPercentage={yieldPercentage}
+          maturityDate={maturityDate}
+          fractionPrice={fractionPrice}
+          guaranteePercentage={guaranteePercentage}
+          coverPercentage={coverPercentage}
+          collateralAmount={collateralAmount}
         />
       </>
     );
@@ -520,6 +536,9 @@ export function InvoiceDetailView({ invoiceId }: InvoiceDetailViewProps) {
           maturityDate={invoice.maturity_date ?? invoice.due_date}
           fractionPrice={invoice.fraction_price}
           trancheStatus={invoice.tranche_status ?? undefined}
+          guaranteePercentage={invoice.guarantee_percentage}
+          coverPercentage={invoice.cover_percentage}
+          collateralAmount={invoice.collateral_amount}
           debtorId={invoice.debtor_id ?? invoice.debtor_hash}
         />
       ) : (

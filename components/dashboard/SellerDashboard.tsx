@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProfileStatsSkeleton } from "@/components/ui/skeletons";
 import { KycStatusBanner } from "@/components/dashboard/KycStatusBanner";
+import { ScreeningBanner } from "@/components/compliance/ScreeningBanner";
 import { SellerInvoiceTabs } from "@/components/dashboard/SellerInvoiceTabs";
 import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist";
 import { TierProgressCard } from "@/components/issuers/TierProgressCard";
@@ -99,6 +100,7 @@ export function SellerDashboard() {
 
   return (
     <div className="space-y-6">
+      <ScreeningBanner />
       {kycStatus && (
         <KycStatusBanner
           status={kycStatus.status}

@@ -80,6 +80,8 @@ import { DebtorAckPanel, useDebtorAckBlocked } from "@/components/invoices/Debto
 import { VelocityMeter } from "@/components/investor/VelocityMeter";
 import { AssignmentBanner } from "@/components/invoices/AssignmentBanner";
 import { RestructureProposalCard } from "@/components/invoices/RestructureProposalCard";
+import { SettleNowButton } from "@/components/invoices/SettleNowButton";
+import { RecoursePanel } from "@/components/invoices/RecoursePanel";
 
 function InvoiceDetailSkeleton() {
   return (
@@ -386,6 +388,12 @@ export function InvoiceDetailView({ invoiceId }: InvoiceDetailViewProps) {
         maturityDate={invoice.due_date}
         minInvestment={minInvestment}
       />
+
+      <RecoursePanel invoiceId={invoice.id} investorPosition={investorClaim} />
+
+      <div className="flex flex-wrap items-center justify-end">
+        <SettleNowButton invoiceId={invoice.id} invoiceTitle={invoice.title} />
+      </div>
       {invoice.status === "settled" && <ImpactReport report={invoice.impact_report} />}
 
       {/* Repayment ledger (#478): interim instalments and the final settlement,

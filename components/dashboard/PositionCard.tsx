@@ -12,6 +12,7 @@ import type { InvestmentPosition } from "@/lib/portfolio";
 import { Money } from "@/components/currency";
 import { OverdueChip } from "@/components/invoices/OverdueChip";
 import { InvestorLateInterest } from "@/components/invoices/InvestorLateInterest";
+import { calculatePotentialRecovery, useRecourse } from "@/hooks/useRecourse";
 import { AccrualMeter } from "@/components/investor/AccrualMeter";
 
 function formatCommittedXlm(amount: number): string {
@@ -39,6 +40,15 @@ export function PositionCard({ position }: PositionCardProps) {
   const hasTransferableBalance = isKeyHolding && (position.quantity ?? 0) > 0;
   const canTopUp = position.status === "active" && (position.remaining_capacity ?? 0) > 0;
   const isDefaulted = position.status === "defaulted";
+  const { guarantee, hasGuarantee } = useRecourse(position.invoice_id);
+  const potentialRecovery =
+    hasGuarantee && guarantee
+      ? calculatePotentialRecovery(
+          guarantee.guarantee_amount,
+          guarantee.funded_principal,
+          position.committed_amount,
+        )
+      : 0;
 
   return (
     <Card data-testid="position-card">
@@ -74,6 +84,21 @@ export function PositionCard({ position }: PositionCardProps) {
                 invoiceId={position.invoice_id}
                 sharePercent={position.share_percent}
               />
+            )}
+            {potentialRecovery > 0 && (
+              <span
+                className="text-xs text-muted-foreground"
+                data-testid="position-recourse-recovery"
+              >
+                Guarantee recovery:{" "}
+                <strong className="text-foreground">
+                  {potentialRecovery.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}{" "}
+                  XLM
+                </strong>
+              </span>
             )}
           </div>
           {position.status === "active" && (

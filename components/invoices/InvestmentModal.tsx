@@ -27,6 +27,8 @@ import { useWallet } from "@/context/WalletContext";
 import { useAccreditationStatus } from "@/hooks/useAccreditationStatus";
 import { isAccreditationExpired } from "@/lib/accreditation";
 import { useAccreditation } from "@/context/AccreditationContext";
+import { ScreeningBanner } from "@/components/compliance/ScreeningBanner";
+import { ScreeningActionGuard } from "@/components/compliance/ScreeningActionGuard";
 import { formatUsdc, formatXLM } from "@/lib/format";
 import { useExposureLimit } from "@/hooks/useExposureLimit";
 import {
@@ -308,6 +310,8 @@ export function InvestmentModal({
               fundingCap={fundingCap ?? maxInvestment}
             />
 
+            <ScreeningBanner />
+
             {validAmount !== null && (
               <FeeBreakdown
                 amount={validAmount}
@@ -335,23 +339,25 @@ export function InvestmentModal({
               >
                 Cancel
               </Button>
-              <GuardedButton
-                onClick={handleInvest}
-                disabled={
-                  validAmount === null ||
-                  amountError !== null ||
-                  investMutation.isPending ||
-                  insufficientBalance ||
-                  fxBlocked ||
-                  feeBlocked ||
-                  isExposureBlocked ||
-                  exposure.blocked
-                }
-                data-testid="investment-submit"
-                className="flex-1"
-              >
-                {investMutation.isPending ? "Investing..." : "Invest"}
-              </GuardedButton>
+              <ScreeningActionGuard actionLabel="Investing">
+                <GuardedButton
+                  onClick={handleInvest}
+                  disabled={
+                    validAmount === null ||
+                    amountError !== null ||
+                    investMutation.isPending ||
+                    insufficientBalance ||
+                    fxBlocked ||
+                    feeBlocked ||
+                    isExposureBlocked ||
+                    exposure.blocked
+                  }
+                  data-testid="investment-submit"
+                  className="flex-1"
+                >
+                  {investMutation.isPending ? "Investing..." : "Invest"}
+                </GuardedButton>
+              </ScreeningActionGuard>
             </div>
           </div>
         )}

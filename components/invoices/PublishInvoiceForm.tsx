@@ -21,6 +21,8 @@ import {
 } from "@/lib/validation/face-value";
 import { validateDeadline } from "@/lib/validation/deadline";
 import { useAuth } from "@/hooks/useAuth";
+import { ScreeningBanner } from "@/components/compliance/ScreeningBanner";
+import { ScreeningActionGuard } from "@/components/compliance/ScreeningActionGuard";
 import { TemplatesPanel } from "@/components/invoices/TemplatesPanel";
 import { BlockedDebtorNotice } from "@/components/debtor/BlockedDebtorNotice";
 import { useDebtorStatus } from "@/hooks/useDebtorStatus";
@@ -408,6 +410,8 @@ export function PublishInvoiceForm() {
             </div>
             <p className="text-sm font-mono break-all">{documentCid}</p>
 
+            <ScreeningBanner />
+
             <FeeBreakdown
               amount={Number(values.faceValue)}
               onInsufficientBalance={setFeeBlocked}
@@ -418,9 +422,11 @@ export function PublishInvoiceForm() {
               <Button variant="outline" onClick={() => setStep(2)}>
                 Back
               </Button>
-              <Button onClick={handlePublish} disabled={isPublishing || debtorBlocked || feeBlocked || issuerAtCap || exposure.blocked}>
-                {isPublishing ? "Publishing..." : "Publish"}
-              </Button>
+              <ScreeningActionGuard actionLabel="Publishing">
+                <Button onClick={handlePublish} disabled={isPublishing || debtorBlocked || feeBlocked || issuerAtCap || exposure.blocked}>
+                  {isPublishing ? "Publishing..." : "Publish"}
+                </Button>
+              </ScreeningActionGuard>
             </div>
           </div>
         )}

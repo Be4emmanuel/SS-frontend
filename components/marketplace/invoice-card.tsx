@@ -27,6 +27,7 @@ import { InvoiceGreylistStatus } from "@/components/invoices/InvoiceGreylistStat
 import { IssuerCreditTierBadge } from "@/components/issuers/IssuerCreditTierBadge";
 import { OverdueChip } from "@/components/invoices/OverdueChip";
 import { IssuerTierBadge } from "@/components/issuers/IssuerTierBadge";
+import { RecourseBadge } from "./RecourseBadge";
 import { useSandboxMode } from "@/hooks/useSandboxMode";
 import { DebtorStatusBadge } from "@/components/debtor/DebtorStatusBadge";
 import { FundingDepth } from "@/components/marketplace/FundingDepth";
@@ -95,6 +96,7 @@ export function InvoiceCard({
           </div>
         </div>
         <InvoiceClassificationBadges invoice={invoice} />
+        <RecourseBadge invoice={invoice} />
         <InvoiceGreylistStatus greylist={invoice.greylist} compact />
         <InvoiceTagPills invoice={invoice} />
       </CardHeader>

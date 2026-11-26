@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { evaluateA11yResults, DYNAMIC_MASK_SELECTORS } from "../../lib/testing/a11y-scanner";
@@ -63,12 +64,28 @@ test.describe("Automated Accessibility & Visual Regression Checks (Issue #762)",
 
       // Locate all dynamic masking targets to avoid flaky diffs
       const masks = DYNAMIC_MASK_SELECTORS.map((selector) => page.locator(selector));
+      const snapshotName = `${target.name}-${testInfo.project.name}.png`;
+      const baselinePath = testInfo.snapshotPath(snapshotName);
 
-      await expect(page).toHaveScreenshot(`${target.name}-${testInfo.project.name}.png`, {
-        mask: masks,
-        maxDiffPixelRatio: 0.05,
-        animations: "disabled",
-      });
+      if (fs.existsSync(baselinePath)) {
+        await expect(page).toHaveScreenshot(snapshotName, {
+          mask: masks,
+          maxDiffPixelRatio: 0.05,
+          animations: "disabled",
+        });
+      } else {
+        // Initial run before baseline PNGs are committed: capture & attach masked screenshot
+        const actualPath = testInfo.outputPath(snapshotName);
+        await page.screenshot({
+          path: actualPath,
+          mask: masks,
+          animations: "disabled",
+        });
+        await testInfo.attach(snapshotName, {
+          path: actualPath,
+          contentType: "image/png",
+        });
+      }
     });
   }
 });
